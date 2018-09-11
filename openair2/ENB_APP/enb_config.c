@@ -36,13 +36,9 @@
 #include "UTIL/OTG/otg.h"
 #include "UTIL/OTG/otg_externs.h"
 #if defined(ENABLE_ITTI)
-# include "intertask_interface.h"
-# if defined(ENABLE_USE_MME) 
+#   include "intertask_interface.h" 
 #   include "s1ap_eNB.h"
 #   include "sctp_eNB_task.h"
-# else
-#  define EPC_MODE_ENABLED 0
-# endif 
 #endif
 #include "sctp_default_values.h"
 #include "SystemInformationBlockType2.h"
@@ -2374,14 +2370,14 @@ int RCconfig_X2(MessageDef *msg_p, uint32_t i)
       for (k = 0; k < ENBParamList.numelt; k++) {
         if (ENBParamList.paramarray[k][ENB_ENB_ID_IDX].uptr == NULL) {
           // Calculate a default eNB ID
-# if defined(ENABLE_USE_MME)
-          uint32_t hash;
+          if (EPC_MODE_ENABLED) {
+             uint32_t hash;
 
-          hash = s1ap_generate_eNB_id ();
-          enb_id = k + (hash & 0xFFFF8);
-# else
-          enb_id = k;
-# endif
+             hash = s1ap_generate_eNB_id ();
+             enb_id = k + (hash & 0xFFFF8);
+          } else {
+             enb_id = k;
+          }
         } else {
           enb_id = *(ENBParamList.paramarray[k][ENB_ENB_ID_IDX].uptr);
         }
@@ -2450,12 +2446,12 @@ int RCconfig_X2(MessageDef *msg_p, uint32_t i)
             // SCTP SETTING
             X2AP_REGISTER_ENB_REQ (msg_p).sctp_out_streams = SCTP_OUT_STREAMS;
             X2AP_REGISTER_ENB_REQ (msg_p).sctp_in_streams  = SCTP_IN_STREAMS;
-# if defined(ENABLE_USE_MME)
-            sprintf(aprefix,"%s.[%i].%s",ENB_CONFIG_STRING_ENB_LIST,k,ENB_CONFIG_STRING_SCTP_CONFIG);
-            config_get( SCTPParams,sizeof(SCTPParams)/sizeof(paramdef_t),aprefix);
-            X2AP_REGISTER_ENB_REQ (msg_p).sctp_in_streams = (uint16_t)*(SCTPParams[ENB_SCTP_INSTREAMS_IDX].uptr);
-            X2AP_REGISTER_ENB_REQ (msg_p).sctp_out_streams = (uint16_t)*(SCTPParams[ENB_SCTP_OUTSTREAMS_IDX].uptr);
-#endif
+            if (EPC_MODE_ENABLED) {
+                sprintf(aprefix,"%s.[%i].%s",ENB_CONFIG_STRING_ENB_LIST,k,ENB_CONFIG_STRING_SCTP_CONFIG);
+                config_get( SCTPParams,sizeof(SCTPParams)/sizeof(paramdef_t),aprefix);
+                X2AP_REGISTER_ENB_REQ (msg_p).sctp_in_streams = (uint16_t)*(SCTPParams[ENB_SCTP_INSTREAMS_IDX].uptr);
+                X2AP_REGISTER_ENB_REQ (msg_p).sctp_out_streams = (uint16_t)*(SCTPParams[ENB_SCTP_OUTSTREAMS_IDX].uptr);
+            }
 
             sprintf(aprefix,"%s.[%i].%s",ENB_CONFIG_STRING_ENB_LIST,k,ENB_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);
 
@@ -2501,9 +2497,10 @@ void RCConfig(void) {
   printf("Getting ENBSParams\n");
  
   config_get( ENBSParams,sizeof(ENBSParams)/sizeof(paramdef_t),NULL); 
-# if defined(ENABLE_USE_MME)
+
   EPC_MODE_ENABLED = ((*ENBSParams[ENB_NOS1_IDX].uptr) == 0);
-#endif
+
+
   RC.nb_inst = ENBSParams[ENB_ACTIVE_ENBS_IDX].numelt;
 
   if (RC.nb_inst > 0) {

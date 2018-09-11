@@ -35,12 +35,8 @@
 #include "flexran_agent.h"
 
 #if defined(ENABLE_ITTI)
-#if defined(ENABLE_USE_MME)
 #include "s1ap_eNB.h"
-#ifdef PDCP_USE_NETLINK
 #include "SIMULATION/ETH_TRANSPORT/proto.h"
-#endif
-#endif
 #endif
 
 /* help strings definition for command line options, used in CMDLINE_XXX_DESC macros and printed when -h option is used */
@@ -95,7 +91,7 @@
 #define CONFIG_HLP_CODINGW       "coding worker thread enable(disable by defult)\n"
 #define CONFIG_HLP_FEPW          "FEP worker thread enabled(disable by defult)\n"
 #define CONFIG_HLP_EMULATE_RF    "Emulated RF enabled(disable by defult)\n"
-
+#define CONFIG_HLP_NOS1          "Disable s1 interface\n"
 #define CONFIG_HLP_DISABLNBIOT   "disable nb-iot, even if defined in config\n"
 
 /***************************************************************************************************************************************/
@@ -188,6 +184,7 @@
 {"emulate-rf" ,             CONFIG_HLP_EMULATE_RF,  PARAMFLAG_BOOL,         iptr:&emulate_rf,                   defintval:0,                    TYPE_INT,       0},                     \
 {"codingw" ,                CONFIG_HLP_CODINGW,     PARAMFLAG_BOOL,         iptr:&codingw,                      defintval:0,                    TYPE_INT,       0},                     \
 {"fepw" ,                   CONFIG_HLP_FEPW,        PARAMFLAG_BOOL,         iptr:&fepw,                         defintval:0,                    TYPE_INT,       0},                     \
+{"noS1",                    CONFIG_HLP_NOS1,        PARAMFLAG_BOOL,         uptr:&noS1,			        defintval:0,			TYPE_INT,	0},                     \
 {"nbiot-disable",           CONFIG_HLP_DISABLNBIOT, PARAMFLAG_BOOL,         iptr:&nonbiotflag,			defintval:0,			TYPE_INT,	0} \
 }
 
@@ -212,6 +209,15 @@
 
 /***************************************************************************************************************************************/  
 /*  */
+
+#define SOFTMODEM_NOS1_BIT            (1<<0)
+typedef struct {
+   uint64_t optmask;
+} softmodem_params_t;
+
+#define SOFTMODEM_NOS1            ( get_softmodem_optmask() & SOFTMODEM_NOS1_BIT)
+
+uint64_t get_pdcp_optmask(void);
 extern pthread_cond_t sync_cond;
 extern pthread_mutex_t sync_mutex;
 extern int sync_var;

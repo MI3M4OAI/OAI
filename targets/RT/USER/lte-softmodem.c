@@ -107,9 +107,6 @@ unsigned char                   scope_enb_num_ue = 2;
 static pthread_t                forms_thread; //xforms
 #endif //XFORMS
 
-#ifndef ENABLE_USE_MME
-#define EPC_MODE_ENABLED 0
-#endif
 
 pthread_cond_t nfapi_sync_cond;
 pthread_mutex_t nfapi_sync_mutex;
@@ -223,7 +220,7 @@ int codingw = 0;
 int fepw = 0;
 
 
-
+static softmodem_params_t softmodem_params;
 /* struct for ethernet specific parameters given in eNB conf file */
 eth_params_t *eth_params;
 
@@ -321,7 +318,11 @@ void signal_handler(int sig) {
 #define KBLU  "\x1B[34m"
 #define RESET "\033[0m"
 
+static softmodem_params_t softmodem_params;
 
+uint64_t get_softmodem_optmask(void) {
+return softmodem_params.optmask;
+}
 
 void exit_function(const char* file, const char* function, const int line, const char* s)
 {
@@ -502,6 +503,7 @@ static void get_options(unsigned int *start_msc) {
   uint32_t online_log_messages;
   uint32_t glog_level ;
   uint32_t start_telnetsrv;
+  uint32_t noS1;
 
   paramdef_t cmdline_params[] =CMDLINE_PARAMS_DESC ;
   paramdef_t cmdline_logparams[] =CMDLINE_LOGPARAMS_DESC ;
@@ -531,6 +533,10 @@ static void get_options(unsigned int *start_msc) {
      load_module_shlib("telnetsrv",NULL,0,NULL);
   }
 
+  if (noS1) {
+     softmodem_params.optmask = softmodem_params.optmask | SOFTMODEM_NOS1_BIT;
+  }
+  
   if ( !(CONFIG_ISFLAGSET(CONFIG_ABORT)) ) {
       memset((void*)&RC,0,sizeof(RC));
       /* Read RC configuration file */
@@ -940,13 +946,8 @@ int main( int argc, char **argv )
       LOG_E(OPT,"failed to run OPT \n");
   }
 
-#ifdef PDCP_USE_NETLINK
-  printf("PDCP netlink\n");
-  netlink_init();
-#if defined(PDCP_USE_NETLINK_QUEUES)
-  pdcp_netlink_init();
-#endif
-#endif
+
+
 
 #if !defined(ENABLE_ITTI)
   // to make a graceful exit when ctrl-c is pressed
@@ -963,56 +964,9 @@ int main( int argc, char **argv )
 
   LOG_I(HW, "Version: %s\n", PACKAGE_VERSION);
 
-
-
-
-  printf("Before CC \n");
-
   printf("Runtime table\n");
   fill_modeled_runtime_table(runtime_phy_rx,runtime_phy_tx);
-
-
-#ifndef DEADLINE_SCHEDULER
-  
-  printf("NO deadline scheduler\n");
-  /* Currently we set affinity for UHD to CPU 0 for eNB/UE and only if number of CPUS >2 */
-  
-  cpu_set_t cpuset;
-  int s;
-  char cpu_affinity[1024];
-  CPU_ZERO(&cpuset);
-#ifdef CPU_AFFINITY
-  if (get_nprocs() > 2) {
-    CPU_SET(0, &cpuset);
-    s = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-    if (s != 0) {
-      perror( "pthread_setaffinity_np");
-      exit_fun("Error setting processor affinity");
-    }
-    LOG_I(HW, "Setting the affinity of main function to CPU 0, for device library to use CPU 0 only!\n");
-  }
-#endif
-  
-  /* Check the actual affinity mask assigned to the thread */
-  s = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-  if (s != 0) {
-    perror( "pthread_getaffinity_np");
-    exit_fun("Error getting processor affinity ");
-  }
-  memset(cpu_affinity, 0 , sizeof(cpu_affinity));
-  for (int j = 0; j < CPU_SETSIZE; j++) {
-    if (CPU_ISSET(j, &cpuset)) {
-      char temp[1024];
-      sprintf(temp, " CPU_%d ", j);
-      strcat(cpu_affinity, temp);
-    }
-  }
-  LOG_I(HW, "CPU Affinity of main() function is... %s\n", cpu_affinity);
-#endif
-  
-
-  
-  
+  pdcp_module_init(SOFTMODEM_NOS1);
 #if defined(ENABLE_ITTI)
   if (RC.nb_inst > 0)  {
     
