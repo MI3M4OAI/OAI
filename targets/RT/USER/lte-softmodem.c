@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file lte-enb.c
+/*! \file lte-softmodem.c
  * \brief Top-level threads for eNodeB
  * \author R. Knopp, F. Kaltenberger, Navid Nikaein
  * \date 2012
@@ -94,6 +94,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "PHY/TOOLS/lte_phy_scope.h"
 #include "stats.h"
 #endif
+
 #include "lte-softmodem.h"
 #include "NB_IoT_interface.h"
 #ifdef XFORMS
@@ -293,7 +294,7 @@ unsigned int build_rfdc(int dcoff_i_rxfe, int dcoff_q_rxfe) {
   return (dcoff_i_rxfe + (dcoff_q_rxfe<<8));
 }
 
-#if !defined(ENABLE_ITTI)
+//#if !defined(ENABLE_ITTI)
 void signal_handler(int sig) {
   void *array[10];
   size_t size;
@@ -307,22 +308,21 @@ void signal_handler(int sig) {
     backtrace_symbols_fd(array, size, 2);
     exit(-1);
   } else {
-    printf("trying to exit gracefully...\n");
-    oai_exit = 1;
+      printf("Linux signal %s...\n",strsignal(sig));
+      exit_function(__FILE__, __FUNCTION__, __LINE__,"softmodem starting exit procedure\n");
+//    oai_exit = 1;
+
+
   }
 }
-#endif
+//#endif
 #define KNRM  "\x1B[0m"
 #define KRED  "\x1B[31m"
 #define KGRN  "\x1B[32m"
 #define KBLU  "\x1B[34m"
 #define RESET "\033[0m"
 
-static softmodem_params_t softmodem_params;
 
-uint64_t get_softmodem_optmask(void) {
-return softmodem_params.optmask;
-}
 
 void exit_function(const char* file, const char* function, const int line, const char* s)
 {
@@ -949,11 +949,12 @@ int main( int argc, char **argv )
 
 
 
-#if !defined(ENABLE_ITTI)
+//#if !defined(ENABLE_ITTI)
   // to make a graceful exit when ctrl-c is pressed
   signal(SIGSEGV, signal_handler);
   signal(SIGINT, signal_handler);
-#endif
+  signal(SIGABRT, signal_handler);
+//#endif
 
 
   check_clock();
@@ -971,7 +972,7 @@ int main( int argc, char **argv )
   if (RC.nb_inst > 0)  {
     
     // don't create if node doesn't connect to RRC/S1/GTP
-      if (create_tasks(1) < 0) {
+      if (create_tasks(1,SOFTMODEM_NOS1) < 0) {
         printf("cannot create ITTI tasks\n");
         exit(-1); // need a softer mode
       }

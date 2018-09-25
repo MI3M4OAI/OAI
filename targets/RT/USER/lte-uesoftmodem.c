@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-/*! \file lte-enb.c
+/*! \file lte-uesoftmodem.c
  * \brief Top-level threads for eNodeB
  * \author R. Knopp, F. Kaltenberger, Navid Nikaein
  * \date 2012
@@ -223,6 +223,7 @@ int numerology = 0;
 int codingw = 0;
 int fepw = 0;
 
+static softmodem_params_t softmodem_params;
 /* struct for ethernet specific parameters given in eNB conf file */
 eth_params_t *eth_params;
 
@@ -475,6 +476,7 @@ static void get_options(unsigned int *start_msc) {
   int tddflag, nonbiotflag;
   char *loopfile=NULL;
   int dumpframe;
+  uint32_t noS1;
   uint32_t online_log_messages;
   uint32_t glog_level;
   uint32_t start_telnetsrv;
@@ -507,7 +509,9 @@ static void get_options(unsigned int *start_msc) {
   if (start_telnetsrv) {
      load_module_shlib("telnetsrv",NULL,0,NULL);
   }
-
+  if (noS1) {
+     softmodem_params.optmask = softmodem_params.optmask | SOFTMODEM_NOS1_BIT;
+  }
   paramdef_t cmdline_uemodeparams[] =CMDLINE_UEMODEPARAMS_DESC;
   paramdef_t cmdline_ueparams[] =CMDLINE_UEPARAMS_DESC;
 
@@ -855,13 +859,7 @@ int main( int argc, char **argv )
       LOG_E(OPT,"failed to run OPT \n");
   }
 
-#ifdef PDCP_USE_NETLINK
-  printf("PDCP netlink\n");
-  netlink_init();
-#if defined(PDCP_USE_NETLINK_QUEUES)
-  pdcp_netlink_init();
-#endif
-#endif
+  pdcp_module_init(SOFTMODEM_NOS1);
 
 //TTN for D2D
 #if (RRC_VERSION >= MAKE_VERSION(14, 0, 0))
@@ -999,7 +997,7 @@ int main( int argc, char **argv )
   
   
 #if defined(ENABLE_ITTI)
-    if (create_tasks_ue(1) < 0) {
+    if (create_tasks_ue(1,SOFTMODEM_NOS1) < 0) {
       printf("cannot create ITTI tasks\n");
       exit(-1); // need a softer mode
     }
