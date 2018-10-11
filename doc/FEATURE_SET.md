@@ -102,7 +102,7 @@ The current PDCP layer is header compliant with **3GPP 36.323** Rel 10.1.0 and i
 The RRC layer is based on **3GPP 36.331** v14.3.0 and implements the following functions:
 
 - System Information broadcast (SIB 1, 2, 3, and 13)
-  * SIB1: Up to 6 PMLN IDs broadcast
+  * SIB1: Up to 6 PLMN IDs broadcast
 - RRC connection establishment
 - RRC connection reconfiguration (addition and removal of radio bearers, connection release)
 - RRC connection release
